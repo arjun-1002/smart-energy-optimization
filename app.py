@@ -78,7 +78,13 @@ def get_weather(city):
         return 30, 50, "Clear"
 
 # ================= LOCATION =================
-mode = st.radio("Location Input", ["Auto", "City", "Pincode"])
+mode = st.radio("Location Input", ["Auto (Recommended)", "Manual"])
+
+if mode == "Auto (Recommended)":
+    city = get_location()
+    st.info("Auto-detected location (may vary on cloud)")
+else:
+    city = st.text_input("Enter your city", "Delhi")
 
 if mode == "Auto":
     city = get_location()
