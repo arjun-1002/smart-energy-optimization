@@ -52,163 +52,183 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-# ================= FUNCTIONS =================
-def get_location():
-    try:
-        return requests.get("http://ip-api.com/json/").json().get("city", "Delhi")
-    except:
-        return "Delhi"
-
-def get_city_from_pincode(pincode):
-    try:
-        url = f"http://api.openweathermap.org/geo/1.0/zip?zip={pincode},IN&appid={WEATHER_API}"
-        res = requests.get(url).json()
-        return res["name"] if "name" in res else "Delhi"
-    except:
-        return "Delhi"
-
+# ================= WEATHER (FORECAST FIX) =================
 def get_weather(city):
     try:
-        url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={WEATHER_API}&units=metric"
-        data = requests.get(url).json()
-        if "main" in data:
-            return data['main']['temp'], data['main']['humidity'], data['weather'][0]['main']
-        return 30, 50, "Clear"
+        url = f"http://api.openweathermap.org/data/2.5/forecast?q={city}&appid={WEATHER_API}&units=metric"
+        res = requests.get(url)
+
+        if res.status_code != 200:
+            return None, None, None, "Invalid city"
+
+        data = res.json()
+
+        temps = [i['main']['temp'] for i in data['list'][:8]]  # 24 hrs
+        humidity = data['list'][0]['main']['humidity']
+        condition = data['list'][0]['weather'][0]['main']
+
+        avg_temp = sum(temps) / len(temps)
+
+        return avg_temp, humidity, condition, None
+
     except:
-        return 30, 50, "Clear"
+        return None, None, None, "API Error"
 
-# ================= LOCATION =================
-mode = st.radio("Location Input", ["Auto", "City", "Pincode"]) 
+# ================= LOCATION (FIXED) =================
+st.markdown("### 📍 Enter Location")
 
-if mode == "Auto":
-    city = get_location()
-elif mode == "City":
-    city = st.text_input("City", "Delhi")
-else:
-    pincode = st.text_input("Pincode")
-    city = get_city_from_pincode(pincode)
+city = st.text_input("City", "Delhi")
 
-st.success(f"Using: {city}")
+if city.strip() == "":
+    st.warning("Please enter a valid city")
 
 # ================= SIDEBAR =================
 st.sidebar.header("🏢 Controls")
 
-building_type = {"House":0,"Office":1,"Mall":2}[st.sidebar.selectbox("Building",["House","Office","Mall"])]
+building_type_name = st.sidebar.selectbox("Building", ["House","Office","Mall"])
+building_type = {"House":0,"Office":1,"Mall":2}[building_type_name]
 
 area_input = st.sidebar.text_input("Area (sq ft)", "2000")
-occ_input = st.sidebar.text_input("People", "4")
 
-# validation
 try:
     area = float(area_input)
 except:
     st.sidebar.error("Invalid Area")
     area = 2000
 
-try:
-    occupancy = float(occ_input)
-except:
-    st.sidebar.error("Invalid People")
-    occupancy = 4
+# ================= OCCUPANCY (UPDATED) =================
+if building_type == 2:  # Mall
+    if day < 5:
+        occupancy = 2000
+        st.sidebar.info("👥 Mall (Weekday): 2000 people")
+    else:
+        occupancy = 4000
+        st.sidebar.info("👥 Mall (Weekend): 4000 people")
+else:
+    occ_input = st.sidebar.text_input("People", "4")
+    try:
+        occupancy = float(occ_input)
+    except:
+        st.sidebar.error("Invalid People")
+        occupancy = 4
 
 # ================= PREDICTION =================
 if st.button("🚀 Predict"):
 
-    with st.spinner("Analyzing smart energy usage..."):
-        temp, humidity, condition = get_weather(city)
-
-        inp = np.array([[temp, humidity, hour, day, building_type, occupancy, area]])
-        base_pred = model.predict(inp)[0]
-        base_pred = max(50, min(abs(base_pred), 500))
-
-        # ================= SMART SCALING =================
-        hour_factor = 1.1 if 12 <= hour <= 16 else 1.0
-        temp_factor = 1.2 if temp > 32 else 1.0
-        occupancy_factor = 1 + (occupancy / 30)
-
-        final_pred = base_pred * hour_factor * temp_factor * occupancy_factor
-        final_pred = max(50, min(final_pred, 600))
-
-    # ================= DASHBOARD =================
-    st.subheader("📊 Smart Energy Dashboard")
-
-    c1,c2,c3 = st.columns(3)
-    c1.metric("⚡ Daily Units", f"{final_pred:.2f}")
-    c2.metric("🌡 Temp", f"{temp}°C")
-    c3.metric("💧 Humidity", f"{humidity}%")
-
-    st.info(f"Weather: {condition}")
-
-    # Monthly estimate (no ₹)
-    st.metric("📊 Monthly Estimate", f"{final_pred * 30:.0f} units")
-
-    # efficiency
-    score = 9 if final_pred <150 else 6 if final_pred<300 else 3
-    st.progress(score*10)
-
-    if final_pred<150:
-        st.success("🟢 Efficient Usage")
-    elif final_pred<300:
-        st.warning("🟠 Moderate Usage")
+    if city.strip() == "":
+        st.error("Enter a valid city first")
     else:
-        st.error("🔴 High Usage")
+        with st.spinner("Analyzing smart energy usage..."):
 
-    # ================= DAILY PATTERN =================
-    st.markdown("### 📈 Daily Usage Pattern")
+            temp, humidity, condition, error = get_weather(city)
 
-    pattern = [0.5, 0.4, 0.6, 0.8, 1.2, 1.5, 1.3, 1.0, 0.8, 0.6]
-    simulated = [final_pred * p for p in pattern]
+            if error:
+                st.error(error)
+            else:
+                inp = np.array([[temp, humidity, hour, day, building_type, occupancy, area]])
+                base_pred = model.predict(inp)[0]
+                base_pred = max(20, min(abs(base_pred), 400))
 
-    st.line_chart(pd.DataFrame(simulated, columns=["Usage"]))
+                # ================= SMART SCALING =================
 
-    # ================= RECOMMENDATIONS =================
-    st.markdown("### 💡 Smart Recommendations")
+                if building_type == 0:
+                    usage_hours = 8
+                    base_factor = 0.6
+                elif building_type == 1:
+                    usage_hours = 10
+                    base_factor = 1.0
+                else:
+                    usage_hours = 14
+                    base_factor = 1.4
 
-    if final_pred > 300:
-        st.warning("Reduce heavy appliances")
+                temp_factor = 1.2 if temp > 32 else 1.0
+                occupancy_factor = 1 + (occupancy / 50)
 
-    if temp > 32:
-        st.warning("Set AC to 24–26°C")
+                final_pred = base_pred * base_factor * temp_factor * occupancy_factor
+                final_pred = (final_pred / 24) * usage_hours
 
-    if 12 <= hour <= 16:
-        st.warning("Avoid peak hours")
+                # caps
+                if building_type == 0:
+                    final_pred = min(final_pred, 50)
+                elif building_type == 1:
+                    final_pred = min(final_pred, 300)
+                else:
+                    final_pred = min(final_pred, 600)
 
-    if area > 4000:
-        st.warning("Use zone cooling")
+                final_pred = max(10, final_pred)
 
-    st.success("Use LED & energy-efficient appliances")
+        # ================= DASHBOARD =================
+        st.subheader("📊 Smart Energy Dashboard")
 
-    # ================= SAFE HISTORY =================
-    new = pd.DataFrame([[city, final_pred, datetime.now()]], columns=["City","Energy","Time"])
+        c1,c2,c3 = st.columns(3)
+        c1.metric("⚡ Daily Units", f"{final_pred:.2f}")
+        c2.metric("🌡 Temp", f"{temp:.1f}°C")
+        c3.metric("💧 Humidity", f"{humidity}%")
 
-    if os.path.exists("history.csv"):
-        try:
-            old = pd.read_csv("history.csv")
+        st.info(f"Weather: {condition}")
+        st.metric("📊 Monthly Estimate", f"{final_pred * 30:.0f} units")
 
-            if len(old.columns)==2:
-                old["Time"]=datetime.now()
+        # efficiency
+        score = 9 if final_pred <150 else 6 if final_pred<300 else 3
+        st.progress(score*10)
 
-            hist = pd.concat([old,new], ignore_index=True)
-            hist.to_csv("history.csv", index=False)
+        if final_pred <150:
+            st.success("🟢 Efficient Usage")
+        elif final_pred <300:
+            st.warning("🟠 Moderate Usage")
+        else:
+            st.error("🔴 High Usage")
 
-        except:
+        # ================= DAILY PATTERN =================
+        st.markdown("### 📈 Daily Usage Pattern")
+
+        pattern = [0.4,0.3,0.5,0.7,1.0,1.3,1.5,1.2,0.9,0.6]
+        simulated = [final_pred * p for p in pattern]
+
+        st.line_chart(pd.DataFrame(simulated, columns=["Usage"]))
+
+        # ================= RECOMMENDATIONS =================
+        st.markdown("### 💡 Smart Recommendations")
+
+        if final_pred > 300:
+            st.warning("Reduce heavy appliances")
+        if temp > 32:
+            st.warning("Set AC to 24–26°C")
+        if building_type == 0:
+            st.info("Turn off unused home appliances")
+        if building_type == 1:
+            st.info("Optimize office energy usage")
+        if building_type == 2:
+            st.info("Use efficient cooling for large spaces")
+
+        st.success("Use LED & energy-efficient appliances")
+
+        # ================= HISTORY =================
+        new = pd.DataFrame([[city, final_pred, datetime.now()]], columns=["City","Energy","Time"])
+
+        if os.path.exists("history.csv"):
+            try:
+                old = pd.read_csv("history.csv")
+                if len(old.columns)==2:
+                    old["Time"]=datetime.now()
+                hist = pd.concat([old,new], ignore_index=True)
+                hist.to_csv("history.csv", index=False)
+            except:
+                new.to_csv("history.csv", index=False)
+                hist = new
+        else:
             new.to_csv("history.csv", index=False)
             hist = new
-    else:
-        new.to_csv("history.csv", index=False)
-        hist = new
 
-    # ================= HISTORY =================
-    st.markdown("### 📊 Usage History")
+        st.markdown("### 📊 Usage History")
+        st.line_chart(hist["Energy"])
+        st.metric("Average", f"{hist['Energy'].mean():.2f}")
+        st.metric("Max", f"{hist['Energy'].max():.2f}")
+        st.bar_chart(hist.tail(5)["Energy"])
 
-    st.line_chart(hist["Energy"])
-
-    st.metric("Average", f"{hist['Energy'].mean():.2f}")
-    st.metric("Max", f"{hist['Energy'].max():.2f}")
-
-    st.bar_chart(hist.tail(5)["Energy"])
-
-    st.download_button("📥 Download Report", hist.to_csv(), "report.csv")
+        st.download_button("📥 Download Report", hist.to_csv(), "report.csv")
 
 # ================= FOOTER =================
 st.markdown("---\n<center>⚡ Smart Energy AI | Save Energy • Save Future</center>", unsafe_allow_html=True)
+
+
