@@ -1,141 +1,99 @@
-Use the bellow link
-https://smart-energy-optimization-tjwebrzbvsjfnceqjpsgeb.streamlit.app/
+# ⚡ Smart Energy Optimization using Machine Learning
 
-⚡ Smart Energy Optimization using Machine Learning
-📌 Overview
-This project is an AI-powered energy prediction system that estimates electricity consumption based on real-world factors like weather, building type, and occupancy.
+[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://smart-energy-optimization-tjwebrzbvsjfnceqjpsgeb.streamlit.app/)
 
-The goal is to help users understand, predict, and optimize energy usage for better efficiency.
+> An AI-powered energy prediction and optimization platform that estimates electricity consumption based on live weather data, building structural profiles, occupancy patterns, and appliance loads.
 
-🚀 Features
-🔮 Energy Prediction (ML-based)
+---
 
-🌡 Weather Integration (Temperature & Humidity)
+## 📌 Overview
 
-🏢 Building Type Support
+Electricity consumption is driven by a complex interplay of environmental factors (temperature, humidity), building characteristics (area, insulation, building category), and human activity (schedules, occupancy, equipment). 
 
-House
+This project provides an intelligent energy auditing and simulation tool that helps homeowners, facility managers, and enterprise administrators predict electricity demand, visualize 24-hour diurnal load profiles, and discover actionable strategies to reduce monthly energy expenditure.
 
-Office
+---
 
-Mall
+## 🚀 Key Features
 
-👥 Dynamic Occupancy Logic
+* **🔮 Machine Learning Energy Prediction:** Powered by a Random Forest Regressor trained on diurnal environmental and architectural energy datasets.
+* **🌡 Live Satellite Weather Integration:** Automatically fetches live ambient temperature, humidity, and weather conditions via OpenWeatherMap API for any global city.
+* **🏢 Multi-Category Building Support:**
+  * **House:** Household profile with residential appliances (fans, split ACs, refrigerator, TV, lighting, washing machine).
+  * **Office:** Commercial workplace with workstations, central HVAC, server rooms, and commercial lighting.
+  * **Mall:** Large-scale commercial infrastructure with central chillers, retail display lighting, escalators, and food courts.
+* **📈 24-Hour Diurnal Load Curve:** Realistic 24-hour simulation revealing peak demand hours and off-peak baselines.
+* **💡 AI Optimization Recommendations:** Context-aware energy saving advice (AC thermostat adjustments, peak load shifting, standby power reduction) with estimated dollar/rupee savings.
+* **💰 Cost & Tariff Estimation:** Configurable utility tariff per kWh to estimate total monthly electricity bills and monetary savings.
+* **📁 Audit History Tracking & CSV Export:** Automatically archives prediction logs with full CSV export capabilities.
 
-Mall: Weekday (2000), Weekend (4000)
+---
 
-📊 Daily & Monthly Energy Estimates
+## 🧠 Machine Learning Model Details
 
-📈 Usage Pattern Graph
+| Attribute | Specification |
+|---|---|
+| **Model** | Random Forest Regressor (`sklearn.ensemble.RandomForestRegressor`) |
+| **Input Features** | `temperature`, `humidity`, `hour`, `day`, `building_type`, `occupancy`, `area` |
+| **Output Target** | Hourly energy consumption (kWh) |
+| **Serialization** | `joblib` |
+| **Diurnal Modeling** | Incorporates day-of-week and operating schedule curves (residential vs. commercial vs. retail) |
 
-💡 Smart Recommendations
+---
 
-🕒 Time-based Energy Scaling
+## ⚙️ Installation & Setup
 
-📁 History Tracking & CSV Export
+### Prerequisites
+* Python 3.10+
+* Git
 
-🧠 Machine Learning Model
-Model: Random Forest Regressor
+### 1. Clone the Repository
+```bash
+git clone https://github.com/arjun-1002/smart-energy-optimization.git
+cd smart-energy-optimization
+```
 
-Type: Regression Model
-
-Loaded using: joblib
-
-Purpose:
-
-Predict energy consumption based on input features
-
-📥 Input Parameters
-Temperature (from API)
-
-Humidity (from API)
-
-Building Type
-
-Area (sq ft)
-
-Number of People
-
-Time & Day
-
-⚙️ Technologies Used
-Python 🐍
-
-Streamlit 🎨 (Frontend UI)
-
-Scikit-learn 🤖 (ML Model)
-
-Pandas & NumPy 📊
-
-OpenWeather API 🌐
-
-🧩 How It Works
-User enters:
-
-City
-
-Building details
-
-App fetches weather forecast
-
-ML model predicts base energy
-
-Custom logic adjusts:
-
-Temperature effect
-
-Occupancy
-
-Usage hours
-
-Final output:
-
-Daily units
-
-Monthly estimate
-
-Graph + recommendations
-
-📊 Output
-⚡ Daily Energy Consumption
-
-📅 Monthly Estimate
-
-📈 Energy Trend Graph
-
-💡 Optimization Suggestions
-
-▶️ How to Run
+### 2. Install Dependencies
+```bash
 pip install -r requirements.txt
+```
+
+### 3. (Optional) Set Weather API Key
+You can pass your OpenWeatherMap API key via environment variable:
+```bash
+export OPENWEATHER_API_KEY="your_api_key_here"   # Linux/macOS
+$env:OPENWEATHER_API_KEY="your_api_key_here"      # Windows PowerShell
+```
+*(If unset, the application includes a fallback key and offline demo defaults.)*
+
+### 4. (Optional) Train or Update the Model
+```bash
+python smartpower.py
+```
+
+### 5. Launch the Streamlit App
+```bash
 streamlit run app.py
-⚠️ Challenges Faced
-Auto-location not working in cloud
+```
 
-Unrealistic high predictions
+---
 
-Data inconsistency
+## 📁 Project Structure
 
-✅ Solutions Implemented
-Manual city input
+```
+smart-energy-optimization/
+│
+├── app.py                     # Streamlit frontend & interactive dashboard
+├── smartpower.py              # ML simulation pipeline, training script & CLI test
+├── model.pkl                  # Serialized Random Forest Regressor model
+├── history.csv                # Persistent audit history log
+├── requirements.txt           # Python package requirements
+├── README.md                  # Project documentation
+└── .devcontainer/             # Dev container configuration for VS Code & Codespaces
+```
 
-Forecast-based weather data
+---
 
-Smart scaling logic
-
-Value capping for realistic output
-
-🔮 Future Improvements
-
-IoT-based real-time data
-
-React + FastAPI deployment
-
-Electricity bill calculation
-
-AI chatbot assistant
-
-👨‍💻 Author
-Arjun Rajesh
-
-⭐ Conclusion
-This project combines Machine Learning + Real-world logic to create a smart, adaptive system for energy prediction and optimization.
+## 👨‍💻 Author
+**Arjun Rajesh**  
+GitHub: [@arjun-1002](https://github.com/arjun-1002)
